@@ -30,32 +30,34 @@
     (stx-transfer? 
       (to-uint (var-get payout)) 
       tx-sender 
-      (get user (unwrap! (map-get? winners {idx winner}) (err u0))))))
+      (get user (unwrap! (map-get? winners {idx: winner}) (err u0))))))
 
 ;; 1) calculates the payout 
 ;; 2) uses map to iterate over the winners and distributes the payouts
 
 (define-private (begin-distribution)  
-  (var-set payout 
-    (/ (to-int (as-contract (stx-get-balance tx-sender)))  
-       (to-int (len (var-get tracker))))) 
-  (map distribute-funds (var-get tracker))
-  (ok "Distributed funds"))
+  (begin
+    (var-set payout 
+      (/ (to-int (as-contract (stx-get-balance tx-sender)))  
+        (to-int (len (var-get tracker))))) 
+    (map distribute-funds (var-get tracker))
+    (ok "Distributed funds")))
 
 ;; add a winner to the winner map and list. begins distribution 
 ;; process if the counter equals the winner limit
 
-(define-private (add-winner (winner principal)) 
-  (map-set winners {idx: (var-get counter)} {user: winner}) 
-  (var-set tracker
-          (unwrap-panic 
-           (as-max-len? 
-             (append (var-get tracker) 
-                     (var-get counter))
-             u3)))
-  (if (is-eq (var-get counter) winner-limit) 
-    (begin-distribution) 
-    (ok "Continue Game")))
+(define-private (add-winner (winner principal))
+  (begin
+    (map-set winners {idx: (var-get counter)} {user: winner}) 
+    (var-set tracker
+            (unwrap-panic 
+            (as-max-len? 
+              (append (var-get tracker) 
+                      (var-get counter))
+              u3)))
+    (if (is-eq (var-get counter) winner-limit) 
+      (begin-distribution) 
+      (ok "Continue Game"))))
 
 ;;MAIN FUNCTION
 
@@ -68,6 +70,3 @@
       (if (is-eq (hash160 attempt) answer)
         (add-winner tx-sender) 
         (ok "You Lose")))))
-
-(test= 
- (check-answer "blockstack"))
